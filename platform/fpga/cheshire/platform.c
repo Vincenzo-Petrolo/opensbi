@@ -156,7 +156,7 @@ static int cheshire_final_init(bool cold_boot)
     // // 2: Vsync polarity (Active Low  = 0)
     // vga[0] = 0x1;    
 
-	// return 0;
+	return 0;
 }
 
 /*
