@@ -38,6 +38,16 @@
 #define CHESHIRE_FB_WIDTH             640
 #define CHESHIRE_FB_SIZE			  (CHESHIRE_FB_WIDTH * CHESHIRE_FB_HEIGHT * 2)
 
+#define CSRW(csr, val) asm volatile("csrw  " #csr ", %0" ::"r"(val));
+
+#define CSRC(csr, val) asm volatile("csrc " #csr ", %0" ::"r"(val));
+
+#define CSRS(csr, val) asm volatile("csrs " #csr ", %0" ::"r"(val));
+
+#define CSRR(csr, var) ({ asm volatile("csrr %0, " #csr : "=r"(var)); })
+
+#define MASK_COUNTER_ENABLED 0xffffffff // cycle, time, instret, hpmcounter3-8
+
 static struct platform_uart_data uart = {
 	CHESHIRE_UART_ADDR,
 	CHESHIRE_UART_FREQ,
@@ -92,69 +102,42 @@ static int cheshire_early_init(bool cold_boot)
  */
 static int cheshire_final_init(bool cold_boot)
 {
-	// void *fdt;
 
-	// if (!cold_boot)
-	// 	return 0;
+	// Enable the LLC
+    asm volatile (
+        "la t0,0x03001000\n"
+        "li t1, 0\n"
+        "sw t1, 0(t0)\n"    // llc.CFG_SPM_LOW
+        "sw t1, 4(t0)\n"    // llc.CFG_SPM_HIGH
+        "li t1, 1\n"
+        "sw t1, 16(t0)\n"   // llc.CFG_COMMIT
+        ::: "t0", "t1", "memory"
+    );
 
-	// fdt = fdt_get_address();
-	// fdt_fixups(fdt);
 
-	// // Generate test pattern for screen
-	// uint16_t RGB[8] = {
-	// 	0xffff, //White
-	// 	0xffe0, //Yellow
-	// 	0x07ff, //Cyan
-	// 	0x07E0, //Green
-	// 	0xf81f, //Magenta
-	// 	0xF800, //Red
-	// 	0x001F, //Blue
-	// 	0x0000, //Black
-	// };
-	// int col_width = CHESHIRE_FB_WIDTH / 8;
+    // Write to mcounteren and scounteren to allow U-mode access to perf counters
+    CSRW(mcounteren, MASK_COUNTER_ENABLED);
+    CSRW(scounteren, MASK_COUNTER_ENABLED);
 
-    // volatile uint16_t *fb = (volatile uint16_t*)(void*)(uintptr_t) CHESHIRE_FB_ADDR;
+    // Now we need to map the events we want to see in U-mode.
+    // | Counter | Event ID | Description                        |
+    // | ------- | -------- | ---------------------------------- |
+    // | 3       | 2        | Number of misses in L1 D-Cache     |
+    // | 4       | 1        | Number of misses in L1 I-Cache     |
+    // | 5       | 17       | Number of Data Cache line eviction |
+    // | 6       | 4        | Number of misses in DTLB           |
+    // | 7       | 23       | LLC Miss                           |
+    // | 8       | 24       | LLC Eviction                       |
 
-    // for (int i=0; i < CHESHIRE_FB_HEIGHT; i++) {
-    //     for (int j=0; j < CHESHIRE_FB_WIDTH; j++) {
-    //         fb[CHESHIRE_FB_WIDTH * i + j] = RGB[j / col_width];
-    //     }
-    // }
+    CSRW(mhpmevent3, 2);
+    CSRW(mhpmevent4, 1);
+    CSRW(mhpmevent5, 17);
+    CSRW(mhpmevent6, 4);
+    CSRW(mhpmevent7, 23);
+    CSRW(mhpmevent8, 24);
 
-	// // Pointer array to acces VGA control registers.
-	// // Every index step increases the pointer by 32bit
-	// volatile uint32_t *vga = (volatile uint32_t*)(void*)(uintptr_t) CHESHIRE_VGA_ADDR;
-
-    // // Initialize VGA controller and populate framebuffer
-    // // Clk div
-    // vga[1] = 0x2;        // 8 for Sim, 2 for FPGA
-    
-    // // Hori: Visible, Front porch, Sync, Back porch
-    // vga[2] = 0x280;
-    // vga[3] = 0x10;
-    // vga[4] = 0x60;
-    // vga[5] = 0x30;
-
-    // // Vert: Visible, Front porch, Sync, Back porch
-    // vga[6] = 0x1e0;
-    // vga[7] = 0xA;
-    // vga[8] = 0x2;
-    // vga[9] = 0x21;
-
-    // // Framebuffer start address
-    // vga[10] = CHESHIRE_FB_ADDR;     // Low 32 bit
-    // vga[11] = 0x0;            // High 32 bit
-
-    // // Framebuffer size
-    // vga[12] = CHESHIRE_FB_WIDTH*CHESHIRE_FB_HEIGHT*2;      // 640*480 pixel a 2 byte/pixel
-
-    // // Burst length
-    // vga[13] = 16;           // 64b * 16 = 128B Bursts
-
-    // // 0: Enable
-    // // 1: Hsync polarity (Active Low  = 0)
-    // // 2: Vsync polarity (Active Low  = 0)
-    // vga[0] = 0x1;    
+    // Dont inhibit any of the counters
+    CSRW(mcountinhibit, 0);
 
 	return 0;
 }
