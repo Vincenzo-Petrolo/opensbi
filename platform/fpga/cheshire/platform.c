@@ -124,15 +124,15 @@ static int cheshire_final_init(bool cold_boot)
     // | ------- | -------- | ---------------------------------- |
     // | 3       | 2        | Number of misses in L1 D-Cache     |
     // | 4       | 1        | Number of misses in L1 I-Cache     |
-    // | 5       | 17       | Number of Data Cache line eviction |
-    // | 6       | 4        | Number of misses in DTLB           |
+    // | 5       | 5        | Number of Load Accesses            |
+    // | 6       | 6        | Number of Store Accesses           |
     // | 7       | 23       | LLC Miss                           |
     // | 8       | 24       | LLC Eviction                       |
 
     CSRW(mhpmevent3, 2);
     CSRW(mhpmevent4, 1);
-    CSRW(mhpmevent5, 17);
-    CSRW(mhpmevent6, 4);
+    CSRW(mhpmevent5, 5);
+    CSRW(mhpmevent6, 6);
     CSRW(mhpmevent7, 23);
     CSRW(mhpmevent8, 24);
 
