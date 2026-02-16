@@ -119,6 +119,14 @@ static int cheshire_final_init(bool cold_boot)
     CSRW(mcounteren, MASK_COUNTER_ENABLED);
     CSRW(scounteren, MASK_COUNTER_ENABLED);
 
+	// Enable ARCANE delegation of traps
+
+	/**ARCANE exceptions */
+	uint64_t exceptions = 0;
+	CSRR(medeleg, exceptions);
+	exceptions |= (1UL << 25) | (1UL << 26);
+	CSRW(medeleg, exceptions);
+
     // Now we need to map the events we want to see in U-mode.
     // | Counter | Event ID | Description                        |
     // | ------- | -------- | ---------------------------------- |
