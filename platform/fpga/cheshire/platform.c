@@ -19,7 +19,7 @@
 #include <sbi_utils/timer/aclint_mtimer.h>
 
 #define CHESHIRE_UART_ADDR	      0x03002000
-#define CHESHIRE_UART_FREQ	      50000000
+#define CHESHIRE_UART_FREQ	      80000000
 #define CHESHIRE_UART_BAUDRATE	      115200
 #define CHESHIRE_UART_REG_SHIFT	      2
 #define CHESHIRE_UART_REG_WIDTH	      4
